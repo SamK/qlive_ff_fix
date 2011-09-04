@@ -1,2 +1,8 @@
-This is the readme file
+The goal of this Python script is to fix the Quake Live plugin in order to be able to play Quake Live with every Firefox version.
 
+1. Download the XPI plugin
+2. Download the python script
+3. Execute the script against the plugin:
+    python qlive_ff_fix.py QuakeLivePlugin_433.xpi
+4. Install the fixed plugin
+5. Enjoy!
