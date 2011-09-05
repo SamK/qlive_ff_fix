@@ -22,7 +22,6 @@
 from optparse import OptionParser
 from distutils.version import LooseVersion
 import zipfile
-import libxml2
 import os.path
 import shutil
 
@@ -31,12 +30,36 @@ This is the default maxVersion if --ff_version is not set.
 The wildcard is added automatically, no need to bother with ".*" stuff.
 """
 _FF_MAX_VERSION='7'
+"""The minimal version which requires the "unpack" line """
+_UNPACK_VERSION='4'
 
-def replace_xml_xml(xml_data, ff_max_version):
+def replace_xml_regexp(xml_data, ff_max_version):
     """
-    Replace the maxversion value by "version" given in argument
-    The wildcard is added automatically
+    1. Replace the maxversion value by "version" given in argument
+        (The wildcard is added automatically)
+    2. Adds the "unpack" element if needed
+
+    This function uses regexp instead of libxml2
+    """
+    import re
+    axml_data = []
+    for line in xml_data.splitlines(True):
+        if line.find("em:maxVersion") >= 0:
+            line = re.sub(r'\d+(\.\d+)*(\.\*)?', ff_max_version, line)          
+        axml_data.append(line)
+        if line.find("em:creator") >= 0 and LooseVersion(ff_max_version) >= LooseVersion(_UNPACK_VERSION):
+            axml_data.append('    <em:unpack>true</em:unpack>\n')
+    return ''.join(axml_data)
+
+def replace_xml_libxml2(xml_data, ff_max_version):
+    import libxml2
+    """
+    1. Replace the maxversion value by "version" given in argument
+        (The wildcard is added automatically)
+    2. Adds the "unpack" element if needed
     http://mikekneller.com/kb/python/libxml2python/part1
+
+    This function uses libxml2 instead of regexp
     """
     doc = libxml2.parseDoc(xml_data)
     root = doc.children
@@ -44,7 +67,7 @@ def replace_xml_xml(xml_data, ff_max_version):
     # Is there a better way besides all those loops?
     # TODO: Find a better nicer way
     while child1 is not None:
-        if child1.name  == 'Description' and LooseVersion(ff_max_version) >= LooseVersion("4"):
+        if child1.name  == 'Description' and LooseVersion(ff_max_version) >= LooseVersion(_UNPACK_VERSION):
             """ Firefox versions upper than 4 need the "unpack" element """
             # add new value here
             unpackNode = libxml2.newNode('em:unpack')
@@ -64,7 +87,6 @@ def replace_xml_xml(xml_data, ff_max_version):
         child1 = child1.next
     return doc.serialize()
 
-
 def parse_options(default_firefox_version):
     """
     Reads the arguments given by the user
@@ -76,6 +98,8 @@ def parse_options(default_firefox_version):
                     help="Verbose mode (not yet implemented)")
     parser.add_option("-V", "--ff_version", default=default_firefox_version,
                     help="Your Firefox version [default: %default]")
+    parser.add_option("-r", "--regexp", "--wolf1e", action="store_true", dest="use_regexp",
+                    help="Use regular expression provided by wolf1e instead of libxml2")
     (options, args) = parser.parse_args()
 
     # Argument checks
@@ -103,7 +127,10 @@ if __name__ == "__main__":
     # read the install.rdf file
     install_rdf = xpi_file.read("install.rdf")
     # Create a new xml file
-    new_rdf_xml = replace_xml_xml(install_rdf, options.ff_version + '.*')
+    if options.use_regexp:
+        new_rdf_xml = replace_xml_regexp(install_rdf, options.ff_version + '.*')
+    else:
+        new_rdf_xml = replace_xml_libxml2(install_rdf, options.ff_version + '.*')
 
     # Determine the new xpi filename
     basename, extension = os.path.splitext(xpi_filename)
@@ -119,6 +146,7 @@ if __name__ == "__main__":
             new_xpi_file.writestr(item, zipped_file)
 
     # Write the xml data into a temporary location
+    # FIXME: use the tempfile module: http://docs.python.org/library/tempfile.html
     temp_install_rdf_filename = "/tmp/install.rdf"
     f = open(temp_install_rdf_filename, "w")
     f.write(new_rdf_xml)
@@ -137,7 +165,5 @@ if __name__ == "__main__":
     # honor the "--overwrite" option
     if options.overwrite:
         shutil.move(new_xpi_filename, xpi_filename)
-
-
 
 
