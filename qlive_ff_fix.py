@@ -19,6 +19,11 @@
 # http://sam.zoy.org/wtfpl/COPYING for more details. */ 
 #
 
+__author__ = 'Samuel "samyboy" Krieg'
+__credits__ = ["wolf1e"]
+__license__ = "WTFPL"
+__version__ = "1.1"
+
 from optparse import OptionParser
 from distutils.version import LooseVersion
 import zipfile
@@ -42,12 +47,15 @@ def replace_xml_regexp(xml_data, ff_max_version):
     This function uses regexp instead of libxml2
     """
     import re
+    # This will be our new xml data (stored in an array)
     axml_data = []
     for line in xml_data.splitlines(True):
+        """em:maxVersion found!"""
         if line.find("em:maxVersion") >= 0:
             line = re.sub(r'\d+(\.\d+)*(\.\*)?', ff_max_version, line)          
         axml_data.append(line)
         if line.find("em:creator") >= 0 and LooseVersion(ff_max_version) >= LooseVersion(_UNPACK_VERSION):
+            """ Firefox versions upper than 4 need the unpack element """
             axml_data.append('    <em:unpack>true</em:unpack>\n')
     return ''.join(axml_data)
 
@@ -80,6 +88,7 @@ def replace_xml_libxml2(xml_data, ff_max_version):
                 child4 = child3.children
                 while child4 is not None:
                     if child4.name == 'maxVersion':
+                        """em:maxVersion found!"""
                         child4.setContent(ff_max_version)
                     child4 = child4.next
                 child3 = child3.next
@@ -91,7 +100,7 @@ def parse_options(default_firefox_version):
     """
     Reads the arguments given by the user
     """
-    parser = OptionParser("usage: %prog [options] QuakeLivePlugin_xyz.xpi", version="%prog 1.0")
+    parser = OptionParser("usage: %prog [options] QuakeLivePlugin_xyz.xpi", version="%prog " + __version__)
     parser.add_option("-o", "--overwrite", action="store_true", dest="overwrite",
                     help="Overwrite the current file instead of creating a new file")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
