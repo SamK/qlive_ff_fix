@@ -4,8 +4,6 @@
 #
 # Description:
 # -----------
-# Even if I think that the new versioning system of Firefox sucks,
-# Firefox is still my prefered web browser.
 # This script fixes the Quake Live plugin to match with your Firefox version.
 #
 # Usage:
@@ -21,17 +19,22 @@
 # http://sam.zoy.org/wtfpl/COPYING for more details. */ 
 #
 
-
 from optparse import OptionParser
 import zipfile
 import libxml2
 import os.path
 import shutil
 
+"""
+This is the default maxVersion if --ff_version is not set
+The wildcard is added automatically
+"""
 _FF_VERSION='7'
 
 def replace_xml_xml(xml_data, version):
     """
+    Replace the maxversion value by "version" given in argument
+    The wildcard is added automatically
     http://mikekneller.com/kb/python/libxml2python/part1
     """
     doc = libxml2.parseDoc(xml_data)
@@ -67,25 +70,30 @@ def parse_options(default_firefox_version):
                     help="Your Firefox version [default: %default]")
     (options, args) = parser.parse_args()
 
-    # do some checks
+    # Argument checks
     if len(args) < 1:
-         parser.error("Please write the plugin file file.")
+         parser.error("Please specify a file. Use the '--help' argument for more informations.")
 
     return (options, args[0])
 
 if __name__ == "__main__":
+    """
+    Main part
+    """
 
+    # retrieves the user options and the filename
     (options, xpi_filename) = parse_options(default_firefox_version=_FF_VERSION)
 
-    # Open the file read only, fetch the install.rdf and close the file
+    # Open the file read only
     try:
         xpi_file = zipfile.ZipFile(xpi_filename, "r")
     except zipfile.BadZipfile:
-        print "it looks like %s is not a zip file" % filename
+        # FIXME: output errors to stderr
+        print "The file '%s' does not looks like a proper xpi file" % filename
         exit(1)
 
+    # read the install.rdf file
     install_rdf = xpi_file.read("install.rdf")
-
 
     # Create a new xml file
     new_rdf_xml = replace_xml_xml(install_rdf, options.ff_version + '.*')
@@ -97,6 +105,7 @@ if __name__ == "__main__":
     # Create the new xpi file
     new_xpi_file = zipfile.ZipFile(new_xpi_filename, "w")
 
+    # populate the new xpi file with the old xpi file, exept install.rdf
     for item in xpi_file.infolist():
         zipped_file = xpi_file.read(item.filename)
         if (item.filename != 'install.rdf'):
@@ -108,14 +117,17 @@ if __name__ == "__main__":
     f.write(new_rdf_xml)
     f.close()
 
-    # add temp install.rdf to new xpi file
+    # add the new install.rdf to the new xpi file
     new_xpi_file.write(temp_install_rdf_filename, 'install.rdf')
-    # temp install.rdf is now useless
+
+    # temp install.rdf is now useless, time to delete
     os.unlink(temp_install_rdf_filename)
 
+    # close both zip files
     xpi_file.close()
     new_xpi_file.close()
 
+    # honor the "--overwrite" option
     if options.overwrite:
         shutil.move(new_xpi_filename, xpi_filename)
 
