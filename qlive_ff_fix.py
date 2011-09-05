@@ -97,7 +97,7 @@ if __name__ == "__main__":
         xpi_file = zipfile.ZipFile(xpi_filename, "r")
     except zipfile.BadZipfile:
         # FIXME: output errors to stderr
-        print "The file '%s' does not looks like a proper xpi file" % filename
+        print "The file '%s' does not looks like a proper xpi file" % xpi_filename
         exit(1)
 
     # read the install.rdf file
