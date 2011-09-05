@@ -20,18 +20,19 @@
 #
 
 from optparse import OptionParser
+from distutils.version import LooseVersion
 import zipfile
 import libxml2
 import os.path
 import shutil
 
 """
-This is the default maxVersion if --ff_version is not set
-The wildcard is added automatically
+This is the default maxVersion if --ff_version is not set.
+The wildcard is added automatically, no need to bother with ".*" stuff.
 """
-_FF_VERSION='7'
+_FF_MAX_VERSION='7'
 
-def replace_xml_xml(xml_data, version):
+def replace_xml_xml(xml_data, ff_max_version):
     """
     Replace the maxversion value by "version" given in argument
     The wildcard is added automatically
@@ -39,9 +40,16 @@ def replace_xml_xml(xml_data, version):
     """
     doc = libxml2.parseDoc(xml_data)
     root = doc.children
-    #iterate over children of verse
     child1 = root.children
+    # Is there a better way besides all those loops?
+    # TODO: Find a better nicer way
     while child1 is not None:
+        if child1.name  == 'Description' and LooseVersion(ff_max_version) >= LooseVersion("4"):
+            """ Firefox versions upper than 4 need the "unpack" element """
+            # add new value here
+            unpackNode = libxml2.newNode('em:unpack')
+            unpackNode.setContent('true')
+            child1.addChild(unpackNode)
         child2 = child1.children
         while child2 is not None:
             child3 = child2.children
@@ -49,13 +57,13 @@ def replace_xml_xml(xml_data, version):
                 child4 = child3.children
                 while child4 is not None:
                     if child4.name == 'maxVersion':
-                        child4.setContent(version)
-                        return doc.serialize()
+                        child4.setContent(ff_max_version)
                     child4 = child4.next
                 child3 = child3.next
             child2 = child2.next
         child1 = child1.next
-    doc.freeDoc()
+    return doc.serialize()
+
 
 def parse_options(default_firefox_version):
     """
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     """
 
     # retrieves the user options and the filename
-    (options, xpi_filename) = parse_options(default_firefox_version=_FF_VERSION)
+    (options, xpi_filename) = parse_options(default_firefox_version=_FF_MAX_VERSION)
 
     # Open the file read only
     try:
@@ -94,7 +102,6 @@ if __name__ == "__main__":
 
     # read the install.rdf file
     install_rdf = xpi_file.read("install.rdf")
-
     # Create a new xml file
     new_rdf_xml = replace_xml_xml(install_rdf, options.ff_version + '.*')
 
