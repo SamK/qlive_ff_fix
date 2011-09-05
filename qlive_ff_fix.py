@@ -71,9 +71,9 @@ def parse_options(default_firefox_version):
     """
     parser = OptionParser("usage: %prog [options] QuakeLivePlugin_xyz.xpi", version="%prog 1.0")
     parser.add_option("-o", "--overwrite", action="store_true", dest="overwrite",
-                    help="Overwrite current file instead of creating a new file")
+                    help="Overwrite the current file instead of creating a new file")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
-                    help="Verbose mode")
+                    help="Verbose mode (not yet implemented)")
     parser.add_option("-V", "--ff_version", default=default_firefox_version,
                     help="Your Firefox version [default: %default]")
     (options, args) = parser.parse_args()
